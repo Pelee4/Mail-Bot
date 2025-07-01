@@ -1,7 +1,7 @@
 from core.email_reader import conectar_imap, obtener_correos_no_leidos, extraer_contenido
 from telegram_bot.sender import enviar_mensaje
 
-def formatear_mensaje_correo(asunto, cuerpo):
+def formatear_mensaje_correo(asunto, cuerpo): # Definimos el formato del mensaje hasta que añade el openai
     """Formatea el mensaje del correo para Telegram"""
     mensaje = f"📧 **NUEVO CORREO DESTACADO**\n\n"
     mensaje += f"📬 **Asunto:** {asunto}\n\n"
@@ -22,7 +22,7 @@ if __name__ == "__main__":
         # Obtener correos destacados
         correos = obtener_correos_no_leidos(mail)
         
-        if not correos:
+        if not correos: #----CAMBIAR CUANDO AÑADA OPENAI O EL RELOJ PARA LEER CADA X TIEMPO----
             print("📭 No se encontraron correos destacados.")
             enviar_mensaje("📭 No hay correos destacados nuevos.")
         else:
@@ -32,11 +32,12 @@ if __name__ == "__main__":
                 try:
                     asunto, cuerpo = extraer_contenido(mail, uid)
                     
-                    # Mostrar en consola
-                    print("====================================")
-                    print("📬 Asunto:", asunto)
-                    print("📄 Cuerpo:", cuerpo[:500], "...")
-                    print("====================================")
+                    #-----Ya no hace falta mostrar en consola porque lo envía a telegram--------#
+                    # # Mostrar en consola
+                    # print("====================================")
+                    # print("📬 Asunto:", asunto)
+                    # print("📄 Cuerpo:", cuerpo[:500], "...")
+                    # print("====================================")
                     
                     # Formatear y enviar a Telegram
                     mensaje_telegram = formatear_mensaje_correo(asunto, cuerpo)
@@ -50,6 +51,7 @@ if __name__ == "__main__":
         mail.logout()
         print("🔚 Proceso completado.")
         
+        #Por si da error algo durante el proceso
     except Exception as e:
         print(f"❌ Error general: {e}")
         enviar_mensaje(f"❌ Error en el asistente de correos: {e}")

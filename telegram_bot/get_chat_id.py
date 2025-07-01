@@ -2,6 +2,8 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from config.settings import TELEGRAM_TOKEN
 
+# Este bot de Telegram te permite obtener el chat_id de cualquier chat enviando un mensaje. Ya que
+# el chat_id es necesario para enviar mensajes a un chat específico, este bot te facilita esa tarea.
 async def mostrar_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     chat_title = update.effective_chat.title or "Chat privado o sin título"

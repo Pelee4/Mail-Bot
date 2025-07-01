@@ -15,7 +15,8 @@ def obtener_correos_no_leidos(mail):
     print("Buscando correos no leídos...")
     # Seleccionar la bandeja de entrada (INBOX) en lugar de carpeta de destacados
     mail.select('INBOX') # esto lee la bandeja de entrada
-    _, mensajes = mail.search(None, '(FLAGGED)') #las posibles banderas son: UNSEEN, SEEN, FLAGGED, UNFLAGGED, DELETED, UNDELETED
+    _, mensajes = mail.search(None, '(FLAGGED)') # Las posibles banderas son: UNSEEN, SEEN, FLAGGED, UNFLAGGED, DELETED, UNDELETED
+    # Estoy eligiendo los correos destacados porque no leídos tengo muchos
     ids = mensajes[0].split()
     print(f"Encontrados {len(ids)} correos no leídos.")
     return ids
@@ -33,7 +34,7 @@ def extraer_contenido(mail, uid):
     cuerpo = ""
     if mensaje.is_multipart():
         for parte in mensaje.walk(): # Itera sobre las partes del mensaje
-            tipo = parte.get_content_type()  # Faltaban los paréntesis para llamar al método
+            tipo = parte.get_content_type()
             if tipo == "text/plain":
                 cuerpo = parte.get_payload(decode=True).decode(errors='ignore') # Decodifica el cuerpo del mensaje
                 break

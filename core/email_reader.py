@@ -1,13 +1,15 @@
 import imaplib
 import email
 from email.header import decode_header
-from config import settings
+from dotenv import load_dotenv
+import os
 
 # Función para conectarse al servidor IMAP
 def conectar_imap():
     print ("Conectando al servidor IMAP para leer correos...")
-    mail = imaplib.IMAP4_SSL(settings.IMAP_SERVER, settings.IMAP_PORT) # Conexión segura al servidor IMAP
-    mail.login(settings.EMAIL_ACCOUNT, settings.EMAIL_PASSWORD) # Autenticación con el servidor IMAP
+    load_dotenv()  # Cargar las variables de entorno desde el archivo .env
+    mail = imaplib.IMAP4_SSL(os.getenv("IMAP_SERVER"), os.getenv("IMAP_PORT")) # Conexión segura al servidor IMAP
+    mail.login(os.getenv("EMAIL_ACCOUNT"), os.getenv("EMAIL_PASSWORD")) # Autenticación con el servidor IMAP
     return mail
 
 # Función para obtener los correos no leídos

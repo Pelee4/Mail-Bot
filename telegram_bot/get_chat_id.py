@@ -1,6 +1,6 @@
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
-from config.settings import TELEGRAM_TOKEN
+from dotenv import load_dotenv
 
 # Este bot de Telegram te permite obtener el chat_id de cualquier chat enviando un mensaje. Ya que
 # el chat_id es necesario para enviar mensajes a un chat específico, este bot te facilita esa tarea.
@@ -13,6 +13,10 @@ async def mostrar_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 if __name__ == "__main__":
     import os
+    # Cargar las variables de entorno desde el archivo .env
+    load_dotenv()
+    # Obtener el token del bot de Telegram desde las variables de entorno
+    TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
     token = TELEGRAM_TOKEN
     app = ApplicationBuilder().token(token).build()
     app.add_handler(MessageHandler(filters.ALL, mostrar_chat_id))

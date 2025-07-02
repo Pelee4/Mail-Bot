@@ -3,6 +3,7 @@ import email
 from email.header import decode_header
 from dotenv import load_dotenv
 import os
+from datetime import datetime, timedelta
 
 # Función para conectarse al servidor IMAP
 def conectar_imap():
@@ -12,15 +13,17 @@ def conectar_imap():
     mail.login(os.getenv("EMAIL_ACCOUNT"), os.getenv("EMAIL_PASSWORD")) # Autenticación con el servidor IMAP
     return mail
 
-# Función para obtener los correos no leídos
+# Función para obtener los correos no leídos de hace 5 minutos
 def obtener_correos_no_leidos(mail):
     print("Buscando correos no leídos...")
-    # Seleccionar la bandeja de entrada (INBOX) en lugar de carpeta de destacados
     mail.select('INBOX') # esto lee la bandeja de entrada
-    _, mensajes = mail.search(None, '(FLAGGED)') # Las posibles banderas son: UNSEEN, SEEN, FLAGGED, UNFLAGGED, DELETED, UNDELETED
-    # Estoy eligiendo los correos destacados porque no leídos tengo muchos
+    
+    fecha_ayer = (datetime.now() - timedelta(days=1)).strftime("%d-%b-%Y")
+    _, mensajes = mail.search(None, f'(UNSEEN SINCE "{fecha_ayer}")') # Las posibles banderas son: UNSEEN, SEEN, FLAGGED, UNFLAGGED, DELETED, UNDELETED
     ids = mensajes[0].split()
     print(f"Encontrados {len(ids)} correos no leídos.")
+    for uid in ids:
+        mail.store(uid, '+FLAGS', '\\seen')
     return ids
 
 # Función para extraer el contenido de un correo
@@ -28,6 +31,10 @@ def extraer_contenido(mail, uid):
     print(f"Extrayendo contenido del correo con UID: {uid}")
     _, datos = mail.fetch(uid, '(RFC822)') #RFC822 es el formato completo del mensaje
     mensaje = email.message_from_bytes(datos[0][1]) #Esto saca el contenido del mensaje
+
+    autor, _ = decode_header(mensaje['From'])[0]
+    if isinstance(autor, bytes):
+        autor = autor.decode(encoding= 'utf-8', errors='ignore') # Decodifica el autor del mensaje
     
     asunto, _ = decode_header(mensaje['Subject'])[0]
     if isinstance(asunto, bytes):
@@ -42,4 +49,4 @@ def extraer_contenido(mail, uid):
                 break
     else:
         cuerpo = mensaje.get_payload(decode=True).decode(errors='ignore')
-    return asunto, cuerpo
+    return autor, asunto, cuerpo

@@ -3,20 +3,73 @@ from telegram_bot.sender import enviar_mensaje
 import schedule
 import time
 from datetime import datetime
+import re
+from html import unescape
+import html2text
+from core.ai_processor import configurar_openai, resumir_correo
 
 TIEMPO_REVISION = 15  # Tiempo en minutos entre revisiones
 
-def formatear_mensaje_correo(autor, asunto, cuerpo):
+configurar_openai()  # Configurar OpenAI al inicio
+
+def limpiar_texto_telegram(texto):
+    """Limpia el texto para evitar errores en Telegram"""
+    if not texto:
+        return ""
+    
+    # Convertir de string si es necesario
+    texto = str(texto)
+    
+    # Si es HTML, convertir a texto plano
+    if '<html' in texto.lower() or '<!doctype' in texto.lower():
+        # Usar html2text para convertir HTML a markdown/texto plano
+        h = html2text.HTML2Text()
+        h.ignore_links = True
+        h.ignore_images = True
+        h.body_width = 0  # No quebrar líneas
+        texto = h.handle(texto)
+    
+    # Decodificar entidades HTML
+    texto = unescape(texto)
+    
+    # Reemplazar caracteres de control y caracteres problemáticos
+    texto_limpio = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', texto)
+    
+    # Limpiar múltiples saltos de línea
+    texto_limpio = re.sub(r'\n\s*\n\s*\n', '\n\n', texto_limpio)
+    
+    # Limpiar espacios en blanco excesivos
+    texto_limpio = re.sub(r' +', ' ', texto_limpio)
+    
+    # Limitar la longitud total del mensaje (Telegram tiene límite de 4096 caracteres)
+    if len(texto_limpio) > 3000:  # Dejamos margen para el formato
+        texto_limpio = texto_limpio[:3000] + "...\n\n[Mensaje truncado por longitud]"
+    
+    return texto_limpio.strip()
+
+def es_correo_notificacion(autor):
+    if not autor:
+        return False
+    """Verifica si el correo es una notificación de un servicio"""
+    return "noreply" in autor.lower() or "no-reply" in autor.lower()
+
+def formatear_mensaje_correo(autor, asunto, cuerpo, es_notificacion=False):
     """Formatea el mensaje del correo para Telegram"""
-    mensaje = f"📧 **NUEVO CORREO**\n\n"
-    mensaje += f"👤 **De:** {autor}\n"
-    mensaje += f"📬 **Asunto:** {asunto}\n\n"
-    mensaje += f"📄 **Contenido:**\n{cuerpo[:1000]}"  # Limitamos a 1000 caracteres
+    # Limpiar todos los campos
+    #resumen_ia = resumir_correo(autor, asunto, cuerpo)
     
-    if len(cuerpo) > 1000:
-        mensaje += "...\n\n*[Mensaje truncado]*"
+    if es_notificacion:
+        mensaje = f"🔔 NOTIFICACIÓN \n\n"
+    else:
+        mensaje = f"📧 NUEVO CORREO\n\n"
+    mensaje += f"👤 De: {limpiar_texto_telegram(autor)}\n"
+    mensaje += f"📬 Asunto: {limpiar_texto_telegram(asunto)}\n\n"
+    mensaje += f"📄 Contenido:\n{limpiar_texto_telegram(cuerpo)}"  # Limitamos a 1000 caracteres
     
-    return mensaje
+    # Verificación final de longitud
+    mensaje_final = limpiar_texto_telegram(mensaje)
+    
+    return mensaje_final
 
 def revisar_correos():
     """Función que revisa los correos y los envía a Telegram"""
@@ -39,10 +92,16 @@ def revisar_correos():
                 try:
                     autor, asunto, cuerpo = extraer_contenido(mail, uid)
                     
+                    # Limpiar texto para evitar errores en Telegram
+                    cuerpo_limpio = limpiar_texto_telegram(cuerpo)
+
+                    es_notificacion = es_correo_notificacion(autor)
+                    
                     # Formatear y enviar a Telegram
-                    mensaje_telegram = formatear_mensaje_correo(autor, asunto, cuerpo)
-                    enviar_mensaje(mensaje_telegram)
-                    print(f"✅ Correo enviado a Telegram: {asunto}")
+                    mensaje_telegram = formatear_mensaje_correo(autor, asunto, cuerpo_limpio, es_notificacion)
+                    enviar_mensaje(mensaje_telegram, es_notificacion)
+                    tipo_correo = "notificación" if es_notificacion else "correo"
+                    print(f"✅ {tipo_correo.capitalize()} enviado a Telegram: {asunto}")
                     
                 except Exception as e:
                     print(f"❌ Error procesando correo {uid}: {e}")

@@ -1,0 +1,103 @@
+PROMPT IA PARA CLASIFICAR CORREOS:
+
+1º: Definir los diferentes tipos de chats que hay, con su descripción, su prioridad de base, y algunas palabras clave. Esto sirve para que la IA clasifique los correos según sus palabras clave y la prioridad que detecte en diferentes tipos de correos.
+
+Ejemplos de tipos de chats:
+
+ "💳 FACTURACION": {
+        "descripcion": "Facturas, pagos, contabilidad",
+        "prioridad_base": "NORMAL",
+        "keywords": ["factura", "pago", "transferencia", "recibo", "contabilidad"]
+    }
+
+2º: Pasarle un prompt a la IA que analice el correo y pase un JSON con algunos datos sobre este: categoría de correo (las que hemos descrito anteriormente), prioridad de este, cliente que lo manda, proyecto al que está relacionado el correo, si requiere acción inmediata o no, tiempo estimado que requiere la respuesta al correo, tipo de problema que describe, la gravedad de este problema (1-10), y el resumen técnico del correo.
+
+	También se le pueden pasar algunos criterios especiales que debe tener en cuenta.
+
+		Ejemplo:"Si habla de nuevos proyectos, presupuestos = COMERCIAL + IMPORTANTE"
+
+3º: Configurar los grupos de telegram específicos en el .env, y mapearlos.
+
+	Ejemplo: (Cambiarlos por los que se usen finalmente)
+	GRUPOS_TELEGRAM = {
+		"CLIENTE_CRITICO": os.getenv('TELEGRAM_CHAT_ID_CRITICO'),
+		"COMERCIAL": os.getenv('TELEGRAM_CHAT_ID_COMERCIAL'), 
+		"HOSTING_DOMINIOS": os.getenv('TELEGRAM_CHAT_ID_HOSTING'),
+		"FACTURACION": os.getenv('TELEGRAM_CHAT_ID_FACTURACION'),
+		"SEGURIDAD": os.getenv('TELEGRAM_CHAT_ID_SEGURIDAD'),
+		"GENERAL": os.getenv('TELEGRAM_CHAT_ID_GENERAL')
+	}
+
+4º: Formatear el mensaje con los datos recibidos en el json de la IA para que se muestren de forma visual en este.
+
+	Ejemplos del formato de mensaje abajo.
+
+5º: Pasarle el cuerpo del correo para que lo resuma y pasarlo al mensaje formateado. También se pueden crear grupos como "clientes-vip" o "spam-obvio", para que se categorice el correo según estos datos. Así podemos darle más importancia al correo de algunos clientes que son más importantes que otros.
+
+	Ejemplos de filtros:
+
+	"clientes_vip": [
+        "cliente1@empresa.com",
+        "cliente2@importante.com"
+    ],
+    "proveedores_hosting": [
+        "@siteground.com", 
+        "@godaddy.com",
+        "@hostinger.com"
+    ],
+
+Ejemplos del formato:
+
+
+💳 FACTURACION
+🟢 NORMAL
+
+👤 Cliente: Empresa Construcciones SL
+⏱️ Responder en: 24h
+🎯 Problema: pago
+📊 Gravedad: 3/10
+
+💡 Transferencia recibida por mantenimiento mensual web corporativa
+
+👤 De: contabilidad@construcciones-sl.com
+📬 Asunto: Pago transferencia - Factura #2025-001
+
+📄 Contenido:
+Buenos días Jorge,
+
+Adjuntamos comprobante de transferencia por la factura #2025-001 correspondiente al mantenimiento mensual de nuestra web corporativa.
+
+Importe: 150€
+Concepto: Mantenimiento web enero 2025
+Referencia: MANT-ENE-2025
+
+Saludos,
+Departamento Contabilidad
+Construcciones SL
+--------------------------------------------------------------------------------
+
+🚨 CLIENTE_CRITICO
+🔴 URGENTE
+
+👤 Cliente: Hotel Mar Azul
+🌐 Proyecto: hotelmarazul.com
+⏱️ Responder en: inmediato
+🎯 Problema: caída_web
+📊 Gravedad: 9/10
+⚡ ACCIÓN INMEDIATA REQUERIDA
+
+💡 Web del hotel caída con error 500, afecta reservas online
+
+👤 De: maria.garcia@hotelmarazul.com
+📬 Asunto: URGENTE - Nuestra web no funciona
+
+📄 Contenido:
+Hola Jorge,
+
+Nuestra página web hotelmarazul.com no funciona desde hace 2 horas. Sale un "Error 500" y los clientes no pueden hacer reservas. Tenemos una temporada alta y esto nos está costando dinero.
+
+Por favor, revísalo cuanto antes.
+
+Gracias,
+María García
+Directora Hotel Mar Azul

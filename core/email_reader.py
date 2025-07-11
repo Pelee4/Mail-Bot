@@ -23,7 +23,7 @@ def obtener_correos_no_leidos(mail):
     ids = mensajes[0].split()
     print(f"Encontrados {len(ids)} correos no leídos.")
     for uid in ids:
-        mail.store(uid, '+FLAGS', '\\seen')
+        mail.store(uid, '+FLAGS', '\\seen') #Los marca como leídos
     return ids
 
 # Función para extraer el contenido de un correo

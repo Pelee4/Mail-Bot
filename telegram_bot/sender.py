@@ -43,7 +43,6 @@ def enviar_mensaje(mensaje: str, es_notificacion: bool = False):
         response = requests.post(url, data=payload, timeout=10)
         
         print(f"📡 Status code: {response.status_code}")
-        print(f"📄 Response: {response.text}")
         
         response.raise_for_status()
         return True

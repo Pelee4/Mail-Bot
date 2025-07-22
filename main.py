@@ -1,3 +1,8 @@
+
+
+#----------- HAY QUE ACTUALIZAR EL MAIN PARA USAR LOS FILTROS CON LA IA Y AÑADIR LOS CHATS DE TELEGRAM ------------------#
+
+
 from core.email_reader import conectar_imap, obtener_correos_no_leidos, extraer_contenido
 from telegram_bot.sender import enviar_mensaje
 import schedule

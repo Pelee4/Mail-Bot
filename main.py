@@ -1,8 +1,5 @@
-
-
-#----------- HAY QUE ACTUALIZAR EL MAIN PARA USAR LOS FILTROS CON LA IA Y AÑADIR LOS CHATS DE TELEGRAM ------------------#
-
-
+from config import CATEGORIAS_INFORMATICO, TIPOS_PRIORIDAD
+from utils.classifier import clasificar_correo_completo
 from core.email_reader import conectar_imap, obtener_correos_no_leidos, extraer_contenido
 from telegram_bot.sender import enviar_mensaje
 import schedule
@@ -53,23 +50,74 @@ def limpiar_texto_telegram(texto):
     return texto_limpio.strip()
 
 def es_correo_notificacion(autor):
+    """Verifica si el correo es una notificación de un servicio"""
     if not autor:
         return False
-    """Verifica si el correo es una notificación de un servicio"""
     return "noreply" in autor.lower() or "no-reply" in autor.lower()
 
-def formatear_mensaje_correo(autor, asunto, cuerpo, es_notificacion=False):
-    """Formatea el mensaje del correo para Telegram"""
-    # Limpiar todos los campos
-    #resumen_ia = resumir_correo(autor, asunto, cuerpo)
+def formatear_mensaje_con_config(autor, asunto, cuerpo):
+    """
+    Formatea mensaje usando configuraciones centralizadas con IA
+    """
+    # Clasificar correo con IA
+    clasificacion = clasificar_correo_completo(autor, asunto, cuerpo)
     
+    # Obtener configuración de categoría y prioridad
+    config_categoria = CATEGORIAS_INFORMATICO.get(clasificacion["categoria"], {})
+    config_prioridad = TIPOS_PRIORIDAD.get(clasificacion["prioridad"], {})
+    
+    # Construir mensaje con emojis configurados
+    emoji = config_categoria.get("emoji", "📧")
+    emoji_prioridad = config_prioridad.get("emoji", "⚪")
+    
+    mensaje = f"{emoji} {clasificacion['categoria']}\n"
+    mensaje += f"{emoji_prioridad} {clasificacion['prioridad']}\n"
+    
+    # Información del cliente si se identifica
+    if clasificacion.get('cliente', 'No identificado') != 'No identificado':
+        mensaje += f"👤 Cliente: {clasificacion['cliente']}\n"
+    
+    # Proyecto relacionado si existe
+    if clasificacion.get('proyecto_relacionado'):
+        mensaje += f"🌐 Proyecto: {clasificacion['proyecto_relacionado']}\n"
+        
+    # Tiempo de respuesta sugerido
+    mensaje += f"⏱️ Responder en: {clasificacion.get('tiempo_estimado_respuesta', 'No especificado')}\n"
+    
+    # Tipo de problema
+    mensaje += f"🎯 Problema: {clasificacion.get('tipo_problema', 'otro')}\n"
+    
+    # Gravedad del problema
+    mensaje += f"📊 Gravedad: {clasificacion.get('gravedad', 5)}/10\n"
+    
+    # Acción inmediata si es necesaria
+    if clasificacion.get('requiere_accion_inmediata', False):
+        mensaje += f"⚡ ACCIÓN INMEDIATA REQUERIDA\n"
+    
+    # Resumen técnico
+    if clasificacion.get('resumen_tecnico'):
+        mensaje += f"\n💡 {clasificacion['resumen_tecnico']}\n"
+    
+    # Información básica del correo
+    mensaje += f"\n👤 De: {limpiar_texto_telegram(autor)}\n"
+    mensaje += f"📬 Asunto: {limpiar_texto_telegram(asunto)}\n\n"
+    mensaje += f"📄 Contenido:\n{limpiar_texto_telegram(cuerpo)}"
+    
+    # Verificación final de longitud
+    mensaje_final = limpiar_texto_telegram(mensaje)
+    
+    return mensaje_final, clasificacion
+
+def formatear_mensaje_correo(autor, asunto, cuerpo, es_notificacion=False):
+    """Formatea el mensaje del correo para Telegram (método simple)"""
+    # Limpiar todos los campos
     if es_notificacion:
         mensaje = f"🔔 NOTIFICACIÓN \n\n"
     else:
         mensaje = f"📧 NUEVO CORREO\n\n"
     mensaje += f"👤 De: {limpiar_texto_telegram(autor)}\n"
     mensaje += f"📬 Asunto: {limpiar_texto_telegram(asunto)}\n\n"
-    mensaje += f"📄 Contenido:\n{limpiar_texto_telegram(cuerpo)}"  # Limitamos a 1000 caracteres
+    mensaje += f"📄 Contenido:\n{limpiar_texto_telegram(cuerpo)}"
     
     # Verificación final de longitud
     mensaje_final = limpiar_texto_telegram(mensaje)
@@ -85,7 +133,7 @@ def revisar_correos():
         # Conectar al servidor IMAP
         mail = conectar_imap()
         
-        # Obtener correos destacados
+        # Obtener correos no leídos
         correos = obtener_correos_no_leidos(mail)
         
         if not correos:
@@ -100,18 +148,28 @@ def revisar_correos():
                     # Limpiar texto para evitar errores en Telegram
                     cuerpo_limpio = limpiar_texto_telegram(cuerpo)
 
+                    # Verificar si es notificación simple
                     es_notificacion = es_correo_notificacion(autor)
                     
-                    # Formatear y enviar a Telegram
-                    mensaje_telegram = formatear_mensaje_correo(autor, asunto, cuerpo_limpio, es_notificacion)
-                    enviar_mensaje(mensaje_telegram, es_notificacion)
-                    tipo_correo = "notificación" if es_notificacion else "correo"
-                    print(f"✅ {tipo_correo.capitalize()} enviado a Telegram: {asunto}")
+                    if es_notificacion:
+                        # Para notificaciones, usar método simple
+                        mensaje_telegram = formatear_mensaje_correo(autor, asunto, cuerpo_limpio, es_notificacion=True)
+                        enviar_mensaje(mensaje_telegram, es_notificacion=True)
+                        print(f"✅ Notificación enviada a Telegram: {asunto}")
+                    else:
+                        # Para correos normales, usar clasificación IA
+                        mensaje_telegram, clasificacion = formatear_mensaje_con_config(autor, asunto, cuerpo_limpio)
+                        
+                        # Enviar usando el chat_id específico de la clasificación
+                        chat_id = clasificacion.get('chat_id')
+                        enviar_mensaje(mensaje_telegram, chat_id_override=chat_id)
+                        
+                        print(f"✅ Correo {clasificacion['categoria']} ({clasificacion['prioridad']}) enviado: {asunto}")
                     
                 except Exception as e:
                     print(f"❌ Error procesando correo {uid}: {e}")
             
-            print ("✅ Correos marcados como leídos")
+            print("✅ Correos marcados como leídos")
         
         # Cerrar conexión
         mail.logout()
@@ -128,8 +186,9 @@ def main():
     """Función principal que configura el monitoreo continuo"""
     print(f"🚀 Iniciando monitoreo de correos cada {TIEMPO_REVISION} minutos...")
     print("💡 Presiona Ctrl+C para detener el programa")
+    print("🤖 Clasificación inteligente con IA activada")
     
-    # Programar la revisión cada 15 minutos
+    # Programar la revisión cada X minutos
     schedule.every(TIEMPO_REVISION).minutes.do(revisar_correos)
     
     # Ejecutar una revisión inicial
